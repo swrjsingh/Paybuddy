@@ -1,0 +1,280 @@
+name: paybuddy
+services:
+  postgres:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_USER: paybuddy_admin
+      POSTGRES_PASSWORD: local-admin-password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paybuddy_admin"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  rabbitmq:
+    image: rabbitmq:4.1.4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER:?}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD:?}
+    volumes:
+      - rabbit-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  gateway-identity:
+    build:
+      context: .
+      args:
+        SERVICE: gateway-identity
+    image: paybuddy/gateway-identity:0.1.0
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/gateway_identity
+      DATABASE_USER: gateway_identity
+      DATABASE_PASSWORD: local-gateway_identity
+      JWT_SECRET: ${JWT_SECRET:?}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:?}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:?}
+      RABBIT_USER: ${RABBIT_USER:?}
+      RABBIT_PASSWORD: ${RABBIT_PASSWORD:?}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8080/actuator/health >/dev/null || exit 1",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    mem_limit: 512m
+    ports:
+      - "127.0.0.1:8090:8080"
+
+  order:
+    build:
+      context: .
+      args:
+        SERVICE: order
+    image: paybuddy/order:0.1.0
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/order
+      DATABASE_USER: order
+      DATABASE_PASSWORD: local-order
+      JWT_SECRET: ${JWT_SECRET:?}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:?}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:?}
+      RABBIT_USER: ${RABBIT_USER:?}
+      RABBIT_PASSWORD: ${RABBIT_PASSWORD:?}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8080/actuator/health >/dev/null || exit 1",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    mem_limit: 512m
+
+  payment-intent:
+    build:
+      context: .
+      args:
+        SERVICE: payment-intent
+    image: paybuddy/payment-intent:0.1.0
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/payment_intent
+      DATABASE_USER: payment_intent
+      DATABASE_PASSWORD: local-payment_intent
+      JWT_SECRET: ${JWT_SECRET:?}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:?}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:?}
+      RABBIT_USER: ${RABBIT_USER:?}
+      RABBIT_PASSWORD: ${RABBIT_PASSWORD:?}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8080/actuator/health >/dev/null || exit 1",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    mem_limit: 512m
+
+  routing-policy:
+    build:
+      context: .
+      args:
+        SERVICE: routing-policy
+    image: paybuddy/routing-policy:0.1.0
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/routing_policy
+      DATABASE_USER: routing_policy
+      DATABASE_PASSWORD: local-routing_policy
+      JWT_SECRET: ${JWT_SECRET:?}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:?}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:?}
+      RABBIT_USER: ${RABBIT_USER:?}
+      RABBIT_PASSWORD: ${RABBIT_PASSWORD:?}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8080/actuator/health >/dev/null || exit 1",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    mem_limit: 512m
+
+  provider-adapter:
+    build:
+      context: .
+      args:
+        SERVICE: provider-adapter
+    image: paybuddy/provider-adapter:0.1.0
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/provider_adapter
+      DATABASE_USER: provider_adapter
+      DATABASE_PASSWORD: local-provider_adapter
+      JWT_SECRET: ${JWT_SECRET:?}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:?}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:?}
+      RABBIT_USER: ${RABBIT_USER:?}
+      RABBIT_PASSWORD: ${RABBIT_PASSWORD:?}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8080/actuator/health >/dev/null || exit 1",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    mem_limit: 512m
+
+  webhook-ingestion:
+    build:
+      context: .
+      args:
+        SERVICE: webhook-ingestion
+    image: paybuddy/webhook-ingestion:0.1.0
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/webhook_ingestion
+      DATABASE_USER: webhook_ingestion
+      DATABASE_PASSWORD: local-webhook_ingestion
+      JWT_SECRET: ${JWT_SECRET:?}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:?}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:?}
+      RABBIT_USER: ${RABBIT_USER:?}
+      RABBIT_PASSWORD: ${RABBIT_PASSWORD:?}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8080/actuator/health >/dev/null || exit 1",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    mem_limit: 512m
+
+  ledger-reconciliation:
+    build:
+      context: .
+      args:
+        SERVICE: ledger-reconciliation
+    image: paybuddy/ledger-reconciliation:0.1.0
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/ledger_reconciliation
+      DATABASE_USER: ledger_app
+      DATABASE_PASSWORD: local-ledger-app
+      MIGRATION_USER: ledger_reconciliation
+      MIGRATION_PASSWORD: local-ledger_reconciliation
+      JWT_SECRET: ${JWT_SECRET:?}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:?}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET:?}
+      RABBIT_USER: ${RABBIT_USER:?}
+      RABBIT_PASSWORD: ${RABBIT_PASSWORD:?}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8080/actuator/health >/dev/null || exit 1",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    mem_limit: 512m
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:5173:80"
+    depends_on:
+      gateway-identity:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+volumes:
+  postgres-data:
+  rabbit-data:

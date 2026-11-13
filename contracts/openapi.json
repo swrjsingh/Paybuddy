@@ -1,0 +1,1268 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "PayBuddy implemented APIs",
+    "version": "0.1.0",
+    "description": "Internal endpoints exist on service containers only and are not routed by the gateway. Operations endpoints require OPERATIONS role. Webhook HMAC covers timestamp + dot + raw body."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8090",
+      "description": "Public gateway: excludes /internal paths"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "summary": "Sign in to the local sandbox",
+        "tags": [
+          "Gateway/Identity"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Current user",
+        "tags": [
+          "Gateway/Identity"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/orders": {
+      "post": {
+        "summary": "Create a merchant order",
+        "tags": [
+          "Order"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string"
+                  },
+                  "amountMinor": {
+                    "type": "integer"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "enum": [
+                      "INR"
+                    ]
+                  }
+                },
+                "required": [
+                  "description",
+                  "amountMinor",
+                  "currency"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      },
+      "get": {
+        "summary": "List the latest 200 orders",
+        "tags": [
+          "Order"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/orders/{id}": {
+      "get": {
+        "summary": "Read owned order",
+        "tags": [
+          "Order"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/internal/orders/{id}": {
+      "get": {
+        "summary": "Read order for service validation",
+        "tags": [
+          "Order"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "ServiceKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/payment-intents": {
+      "post": {
+        "summary": "Create/reuse one intent per order",
+        "tags": [
+          "Payment Intent"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "orderId": {
+                    "type": "string"
+                  },
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "UPI",
+                      "GENERIC"
+                    ]
+                  }
+                },
+                "required": [
+                  "orderId",
+                  "method"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 120
+            }
+          }
+        ]
+      },
+      "get": {
+        "summary": "List latest 200 payment intents",
+        "tags": [
+          "Payment Intent"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/payment-intents/{id}": {
+      "get": {
+        "summary": "Read owned payment intent",
+        "tags": [
+          "Payment Intent"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/payment-intents/{id}/timeline": {
+      "get": {
+        "summary": "Read lifecycle history",
+        "tags": [
+          "Payment Intent"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/providers": {
+      "get": {
+        "summary": "List merchant routing policy",
+        "tags": [
+          "Routing"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/routing/policies/{providerId}": {
+      "put": {
+        "summary": "Operations: update priority and eligibility",
+        "tags": [
+          "Routing"
+        ],
+        "parameters": [
+          {
+            "name": "providerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "priority": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "priority",
+                  "enabled"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/internal/routes/select": {
+      "post": {
+        "summary": "Select eligible method/provider",
+        "tags": [
+          "Routing"
+        ],
+        "security": [
+          {
+            "ServiceKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "merchantId": {
+                    "type": "string"
+                  },
+                  "method": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "merchantId",
+                  "method"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/internal/providers/{provider}/payments": {
+      "post": {
+        "summary": "Persist/query idempotent provider submission",
+        "tags": [
+          "Provider"
+        ],
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "ServiceKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "requestKey": {
+                    "type": "string"
+                  },
+                  "intentId": {
+                    "type": "string"
+                  },
+                  "orderId": {
+                    "type": "string"
+                  },
+                  "merchantId": {
+                    "type": "string"
+                  },
+                  "amountMinor": {
+                    "type": "integer"
+                  },
+                  "currency": {
+                    "type": "string"
+                  },
+                  "method": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "requestKey",
+                  "intentId",
+                  "orderId",
+                  "merchantId",
+                  "amountMinor",
+                  "currency",
+                  "method"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/internal/providers/{provider}/payments/by-request/{key}": {
+      "get": {
+        "summary": "Query original attempt after uncertainty",
+        "tags": [
+          "Provider"
+        ],
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "ServiceKey": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/simulator/payments/{token}/view": {
+      "get": {
+        "summary": "Expiring opaque-token checkout view",
+        "tags": [
+          "Provider"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/simulator/payments/{token}/complete": {
+      "post": {
+        "summary": "Approve/decline simulated payment; no real money",
+        "tags": [
+          "Provider"
+        ],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "SUCCEEDED",
+                      "FAILED"
+                    ]
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/operations/providers/scenarios": {
+      "get": {
+        "summary": "Operations: inspect fault scenarios",
+        "tags": [
+          "Provider"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/operations/providers/{provider}/scenario": {
+      "put": {
+        "summary": "Operations: set new-attempt scenario",
+        "tags": [
+          "Provider"
+        ],
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "NORMAL",
+                      "DUPLICATE",
+                      "DELAY",
+                      "TIMEOUT",
+                      "FAILURE"
+                    ]
+                  }
+                },
+                "required": [
+                  "mode"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/operations/providers/payments/{id}/replay": {
+      "post": {
+        "summary": "Operations: replay original callback three times",
+        "tags": [
+          "Provider"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/webhooks/{provider}": {
+      "post": {
+        "summary": "Verify raw body and durably accept provider outcome",
+        "tags": [
+          "Webhook"
+        ],
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "WebhookTimestamp": [],
+            "WebhookSignature": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderOutcome"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/operations/webhooks": {
+      "get": {
+        "summary": "Operations: inspect verified delivery counts",
+        "tags": [
+          "Webhook"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/ledger": {
+      "get": {
+        "summary": "List latest 200 immutable payment effects",
+        "tags": [
+          "Ledger"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    },
+    "/ledger/{id}": {
+      "get": {
+        "summary": "List effects for an owned intent",
+        "tags": [
+          "Ledger"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful result; see implementation and examples in README"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing/invalid credentials"
+          },
+          "403": {
+            "description": "Wrong role or internal boundary"
+          },
+          "404": {
+            "description": "Record not found in authorized scope"
+          },
+          "409": {
+            "description": "Idempotency/state/content conflict"
+          },
+          "503": {
+            "description": "Required service temporarily unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "ServiceKey": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Service-Key"
+      },
+      "WebhookTimestamp": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Webhook-Timestamp"
+      },
+      "WebhookSignature": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Webhook-Signature"
+      }
+    },
+    "schemas": {
+      "ProviderOutcome": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string"
+          },
+          "eventType": {
+            "type": "string"
+          },
+          "schemaVersion": {
+            "type": "integer"
+          },
+          "intentId": {
+            "type": "string"
+          },
+          "attemptId": {
+            "type": "string"
+          },
+          "orderId": {
+            "type": "string"
+          },
+          "merchantId": {
+            "type": "string"
+          },
+          "providerId": {
+            "type": "string"
+          },
+          "providerTransactionId": {
+            "type": "string"
+          },
+          "amountMinor": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "INR"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PROCESSING",
+              "SUCCEEDED",
+              "FAILED"
+            ]
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "eventId",
+          "eventType",
+          "schemaVersion",
+          "intentId",
+          "attemptId",
+          "orderId",
+          "merchantId",
+          "providerId",
+          "providerTransactionId",
+          "amountMinor",
+          "currency",
+          "status",
+          "occurredAt"
+        ]
+      }
+    }
+  }
+}

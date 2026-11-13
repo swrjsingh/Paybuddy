@@ -1,0 +1,15 @@
+CREATE USER "gateway_identity" WITH PASSWORD 'local-gateway_identity';
+CREATE DATABASE "gateway_identity" OWNER "gateway_identity";
+CREATE USER "order" WITH PASSWORD 'local-order';
+CREATE DATABASE "order" OWNER "order";
+CREATE USER "payment_intent" WITH PASSWORD 'local-payment_intent';
+CREATE DATABASE "payment_intent" OWNER "payment_intent";
+CREATE USER "routing_policy" WITH PASSWORD 'local-routing_policy';
+CREATE DATABASE "routing_policy" OWNER "routing_policy";
+CREATE USER "provider_adapter" WITH PASSWORD 'local-provider_adapter';
+CREATE DATABASE "provider_adapter" OWNER "provider_adapter";
+CREATE USER "webhook_ingestion" WITH PASSWORD 'local-webhook_ingestion';
+CREATE DATABASE "webhook_ingestion" OWNER "webhook_ingestion";
+CREATE USER "ledger_reconciliation" WITH PASSWORD 'local-ledger_reconciliation';
+CREATE DATABASE "ledger_reconciliation" OWNER "ledger_reconciliation";
+CREATE USER ledger_app WITH PASSWORD 'local-ledger-app';

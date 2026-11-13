@@ -1,0 +1,4 @@
+CREATE TABLE scenarios (provider_id TEXT PRIMARY KEY,mode TEXT NOT NULL DEFAULT 'NORMAL');
+INSERT INTO scenarios(provider_id) VALUES('upi-a'),('upi-b'),('generic');
+CREATE TABLE provider_transactions (id TEXT PRIMARY KEY,provider_id TEXT NOT NULL,request_key TEXT NOT NULL,intent_id TEXT NOT NULL,order_id TEXT NOT NULL,merchant_id TEXT NOT NULL,amount_minor BIGINT NOT NULL CHECK(amount_minor>0),currency TEXT NOT NULL,method TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'PROCESSING',checkout_token TEXT NOT NULL UNIQUE,mode TEXT NOT NULL,outcome_payload TEXT,created_at TIMESTAMPTZ NOT NULL DEFAULT now(),completed_at TIMESTAMPTZ,UNIQUE(provider_id,request_key));
+CREATE TABLE callback_jobs (id TEXT PRIMARY KEY,payload TEXT NOT NULL,remaining INT NOT NULL DEFAULT 1,attempts INT NOT NULL DEFAULT 0,next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT now(),last_error TEXT);

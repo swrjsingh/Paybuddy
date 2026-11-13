@@ -1,0 +1,3 @@
+CREATE TABLE ledger_entries (id TEXT PRIMARY KEY,payment_intent_id TEXT NOT NULL,order_id TEXT NOT NULL,merchant_id TEXT NOT NULL,provider_id TEXT NOT NULL,provider_transaction_id TEXT NOT NULL,entry_kind TEXT NOT NULL,amount_minor BIGINT NOT NULL CHECK(amount_minor>0),currency TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT now(),UNIQUE(payment_intent_id,entry_kind));
+CREATE FUNCTION prevent_ledger_mutation() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Ledger entries are append-only'; END; $$;
+CREATE TRIGGER immutable_ledger BEFORE UPDATE OR DELETE ON ledger_entries FOR EACH ROW EXECUTE FUNCTION prevent_ledger_mutation();

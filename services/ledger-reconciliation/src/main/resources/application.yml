@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: ledger-reconciliation
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USER}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+  rabbitmq:
+    host: ${RABBIT_HOST:rabbitmq}
+    username: ${RABBIT_USER}
+    password: ${RABBIT_PASSWORD}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+server:
+  port: 8080
+  shutdown: graceful
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+paybuddy:
+  jwt-secret: ${JWT_SECRET}
+  internal-secret: ${INTERNAL_SECRET}
+  webhook-secret: ${WEBHOOK_SECRET}
+  order-url: http://order:8080
+  routing-url: http://routing-policy:8080
+  provider-url: http://provider-adapter:8080
+  callback-url: http://webhook-ingestion:8080
+
+spring.flyway.user: ${MIGRATION_USER}
+spring.flyway.password: ${MIGRATION_PASSWORD}

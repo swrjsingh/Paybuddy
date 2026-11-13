@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PayBuddy event envelope",
+  "type": "object",
+  "properties": {
+    "eventId": {
+      "type": "string"
+    },
+    "eventType": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "type": "integer"
+    },
+    "intentId": {
+      "type": "string"
+    },
+    "attemptId": {
+      "type": "string"
+    },
+    "orderId": {
+      "type": "string"
+    },
+    "merchantId": {
+      "type": "string"
+    },
+    "providerId": {
+      "type": "string"
+    },
+    "providerTransactionId": {
+      "type": "string"
+    },
+    "amountMinor": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "currency": {
+      "type": "string",
+      "enum": [
+        "INR"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "PROCESSING",
+        "SUCCEEDED",
+        "FAILED"
+      ]
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "eventId",
+    "eventType",
+    "schemaVersion",
+    "intentId",
+    "attemptId",
+    "orderId",
+    "merchantId",
+    "providerId",
+    "providerTransactionId",
+    "amountMinor",
+    "currency",
+    "status",
+    "occurredAt"
+  ],
+  "description": "ProviderOutcomeObserved and PaymentSucceeded. PaymentSucceeded status must be SUCCEEDED; source may additionally identify STATUS_POLL."
+}

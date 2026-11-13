@@ -1,0 +1,6 @@
+**/target/
+**/node_modules/
+frontend/dist/
+.env
+tests/artifacts/
+.DS_Store

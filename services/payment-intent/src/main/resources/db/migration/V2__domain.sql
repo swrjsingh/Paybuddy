@@ -1,0 +1,5 @@
+CREATE TABLE intents (id TEXT PRIMARY KEY,order_id TEXT NOT NULL UNIQUE,merchant_id TEXT NOT NULL,amount_minor BIGINT NOT NULL,currency TEXT NOT NULL,method TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'CREATED',review_status TEXT NOT NULL DEFAULT 'NONE',version BIGINT NOT NULL DEFAULT 0,provider_id TEXT,provider_transaction_id TEXT,checkout_token TEXT,routing_reason TEXT,last_error TEXT,worker_attempts INT NOT NULL DEFAULT 0,next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT now(),created_at TIMESTAMPTZ NOT NULL DEFAULT now(),updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE idempotency_keys (merchant_id TEXT NOT NULL,key TEXT NOT NULL,request_hash TEXT NOT NULL,intent_id TEXT NOT NULL,PRIMARY KEY(merchant_id,key));
+CREATE TABLE history (id TEXT PRIMARY KEY,intent_id TEXT NOT NULL REFERENCES intents(id),kind TEXT NOT NULL,message TEXT NOT NULL,created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE INDEX history_intent ON history(intent_id,created_at);
+CREATE INDEX intents_work ON intents(next_attempt_at) WHERE status IN ('CREATED','PROCESSING');

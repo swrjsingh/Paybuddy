@@ -1,0 +1,1 @@
+CREATE TABLE webhook_events (provider_id TEXT NOT NULL,event_id TEXT NOT NULL,merchant_id TEXT NOT NULL,intent_id TEXT NOT NULL,payload TEXT NOT NULL,payload_hash TEXT NOT NULL,deliveries INT NOT NULL DEFAULT 1,received_at TIMESTAMPTZ NOT NULL DEFAULT now(),PRIMARY KEY(provider_id,event_id));

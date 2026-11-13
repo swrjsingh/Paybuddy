@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: gateway-identity
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USER}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+  rabbitmq:
+    host: ${RABBIT_HOST:rabbitmq}
+    username: ${RABBIT_USER}
+    password: ${RABBIT_PASSWORD}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+server:
+  port: 8080
+  shutdown: graceful
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+paybuddy:
+  jwt-secret: ${JWT_SECRET}
+  internal-secret: ${INTERNAL_SECRET}
+  webhook-secret: ${WEBHOOK_SECRET}
+  order-url: http://order:8080
+  routing-url: http://routing-policy:8080
+  provider-url: http://provider-adapter:8080
+  callback-url: http://webhook-ingestion:8080
+spring.cloud.gateway.server.webmvc.routes:
+  - id: orders
+    uri: http://order:8080
+    predicates:
+      - Path=/orders,/orders/**
+  - id: payments
+    uri: http://payment-intent:8080
+    predicates:
+      - Path=/payment-intents,/payment-intents/**
+  - id: routing
+    uri: http://routing-policy:8080
+    predicates:
+      - Path=/providers,/routing/**
+  - id: simulator
+    uri: http://provider-adapter:8080
+    predicates:
+      - Path=/simulator/**,/operations/providers/**
+  - id: webhook
+    uri: http://webhook-ingestion:8080
+    predicates:
+      - Path=/webhooks/**,/operations/webhooks/**
+  - id: ledger
+    uri: http://ledger-reconciliation:8080
+    predicates:
+      - Path=/ledger,/ledger/**
