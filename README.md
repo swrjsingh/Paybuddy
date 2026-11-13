@@ -111,3 +111,5 @@ Do not use `docker compose down -v` unless deliberately deleting all local demo 
 ## Next milestone
 
 Use TigerBeetle through its Java client as the authoritative double-entry financial ledger, with stable transfer IDs and a durable PostgreSQL posting workflow to recover cross-database interruptions. Add independent provider settlement exports, imports, matching windows and audited exception resolution; complete reporting, monitoring and measured fault/load experiments. TigerBeetle does not establish external payment success or remove the need for reconciliation.
+
+Progress ongoing

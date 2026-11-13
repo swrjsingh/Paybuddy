@@ -258,7 +258,7 @@ function Login({ onLogin }: { onLogin: (s: Session) => void }) {
           </div>
         </div>
         <div className="login-footer">
-          <ShieldCheck size={15} /> Local payment sandbox · No real money
+          <ShieldCheck size={15} /> Local demo provider · No bank transfer
         </div>
       </section>
       <section className="login-art">
@@ -306,7 +306,7 @@ function Login({ onLogin }: { onLogin: (s: Session) => void }) {
               <CheckCircle2 size={18} />
             </div>
           </div>
-          <div className="art-note">Simulated payments. Real traceability.</div>
+          <div className="art-note">A clear record for every payment outcome.</div>
         </div>
       </section>
     </div>
@@ -460,8 +460,8 @@ function App() {
         </nav>
         <div className="sandbox-note">
           <ShieldCheck size={20} />
-          <strong>Simulation mode</strong>
-          <p>Explore the full payment flow. No real money is transferred.</p>
+          <strong>Demo provider</strong>
+          <p>Explore the full payment flow. No bank transfer occurs.</p>
         </div>
         <div className="user-card">
           <div className="avatar">{ops ? "OP" : "AS"}</div>
@@ -592,7 +592,7 @@ function App() {
                       icon: FileText,
                     },
                     {
-                      title: "Approve a simulated payment",
+                      title: "Approve a demo payment",
                       text: "Use the QR link or the approval screen.",
                       icon: CreditCard,
                     },
@@ -648,8 +648,8 @@ function App() {
                     value={method}
                     onChange={(e) => setMethod(e.target.value)}
                   >
-                    <option value="UPI">UPI simulator</option>
-                    <option value="GENERIC">Card / wallet simulator</option>
+                    <option value="UPI">UPI-style checkout</option>
+                    <option value="GENERIC">Card / wallet checkout</option>
                   </select>
                 </label>
               </div>
@@ -704,7 +704,7 @@ function App() {
               ) : (
                 <Empty
                   title="No orders here yet"
-                  description="Create your first order to start a simulated payment."
+                  description="Create your first order to start checkout."
                 />
               )}
             </section>
@@ -777,7 +777,7 @@ function App() {
               ) : (
                 <Empty
                   title="Your ledger starts with a payment"
-                  description="Complete a simulated payment to see its permanent record."
+                  description="Complete a demo checkout to see its permanent record."
                 />
               )}
             </section>
@@ -792,7 +792,7 @@ function App() {
           {page === "webhooks" && ops && <Webhooks />}
         </main>
         <footer className="app-footer">
-          <span>PayBuddy · Simulated payment workspace</span>
+          <span>PayBuddy · Payment operations workspace</span>
           <span>
             <ShieldCheck size={13} /> Auditable from start to finish
           </span>
@@ -868,7 +868,7 @@ function PaymentTable({
     return (
       <Empty
         title="Your first payment is waiting"
-        description="Create an order, then start a simulated checkout."
+        description="Create an order, then start checkout."
       />
     );
   return (
@@ -984,7 +984,7 @@ function CreateOrder({
             </div>
           </label>
           <p className="form-note">
-            This order will use simulated payments. Its amount is fixed after
+            This order will use the local demo provider. Its amount is fixed after
             creation.
           </p>
           {error && (
@@ -1068,7 +1068,7 @@ function PaymentDetail({
         status,
       });
       notify(
-        "Simulator outcome saved. Waiting for the verified payment update.",
+        "Provider outcome saved. Waiting for the verified payment update.",
       );
       await client.invalidateQueries();
     } catch (e) {
@@ -1202,7 +1202,7 @@ function PaymentDetail({
                 <div>
                   <strong>Payment failed</strong>
                   <p>
-                    The simulator confirmed failure. This order remains unpaid.
+                    The provider confirmed failure. This order remains unpaid.
                   </p>
                 </div>
               </div>
@@ -1213,20 +1213,20 @@ function PaymentDetail({
                   <>
                     <div className="checkout-intro">
                       <span className="pill">
-                        SIMULATED {i.method} CHECKOUT
+                        DEMO {i.method} CHECKOUT
                       </span>
                       <h3>Approve your payment</h3>
                       <p>
                         {i.method === "UPI"
                           ? "Scan this QR or open the approval screen."
-                          : "Open the simulated card / wallet approval screen."}
+                          : "Open the card / wallet approval screen."}
                       </p>
                     </div>
                     {i.method === "UPI" && qr && (
                       <img
                         className="qr"
                         src={qr}
-                        alt="QR code linking to the PayBuddy simulator"
+                        alt="QR code linking to the local PayBuddy provider"
                       />
                     )}
                     <div className="vpa">demo-merchant@paybuddy</div>
@@ -1236,7 +1236,7 @@ function PaymentDetail({
                       rel="noreferrer"
                       href={url}
                     >
-                      Open simulator <ArrowUpRight size={16} />
+                      Open provider checkout <ArrowUpRight size={16} />
                     </a>
                     <div className="simulation-actions">
                       <button
@@ -1244,14 +1244,14 @@ function PaymentDetail({
                         onClick={() => approve("SUCCEEDED")}
                         disabled={acting}
                       >
-                        <Check size={16} /> Simulate success
+                        <Check size={16} /> Approve payment
                       </button>
                       <button
                         className="secondary"
                         onClick={() => approve("FAILED")}
                         disabled={acting}
                       >
-                        Simulate failure
+                        Decline payment
                       </button>
                     </div>
                     <p className="form-note">
@@ -1363,8 +1363,8 @@ function Providers({
             <h2>{p.name}</h2>
             <p>
               {p.method === "UPI"
-                ? "Simulated QR and VPA payments"
-                : "Simulated card and wallet payments"}
+                ? "Local QR and VPA checkout"
+                : "Local card and wallet checkout"}
             </p>
             <div className="provider-meta">
               <span>
@@ -1423,7 +1423,7 @@ function Providers({
       <div className="info-note">
         <ShieldCheck size={18} />
         <p>
-          Providers are simulators. Lower priority numbers are selected first.
+          These are local demo providers. Lower priority numbers are selected first.
           An existing payment keeps its original provider, even if its policy
           changes.
         </p>
@@ -1482,7 +1482,7 @@ function Webhooks() {
       ) : (
         <Empty
           title="No verified callbacks yet"
-          description="Approve a simulated payment to populate the inbox."
+          description="Approve a demo payment to populate the inbox."
         />
       )}
     </section>
@@ -1518,7 +1518,7 @@ function Simulator({ token }: { token: string }) {
       <Brand />
       <section className="simulator-card">
         <span className="pill">
-          <ShieldCheck size={14} /> SIMULATION ONLY
+          <ShieldCheck size={14} /> LOCAL DEMO PROVIDER
         </span>
         {q.error ? (
           <div className="error">This checkout link is invalid or expired.</div>
@@ -1549,7 +1549,7 @@ function Simulator({ token }: { token: string }) {
                   disabled={busy}
                   onClick={() => complete("SUCCEEDED")}
                 >
-                  <CheckCircle2 size={18} /> Approve simulated payment
+                  <CheckCircle2 size={18} /> Approve payment
                 </button>
                 <button
                   className="secondary full"
