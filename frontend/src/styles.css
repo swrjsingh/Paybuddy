@@ -173,16 +173,27 @@ h3 {
 }
 .badge.succeeded,
 .badge.paid,
-.badge.available {
+.badge.available,
+.badge.posted,
+.badge.matched,
+.badge.resolved {
   background: #e8f5ed;
   color: #328457;
 }
 .badge.created,
-.badge.processing {
+.badge.processing,
+.badge.pending,
+.badge.investigating {
   background: #fff4df;
   color: #ac7a28;
 }
-.badge.failed {
+.badge.failed,
+.badge.open,
+.badge.amount_mismatch,
+.badge.missing_in_settlement,
+.badge.missing_in_ledger,
+.badge.duplicate_settlement,
+.badge.status_conflict {
   background: #fcecec;
   color: #b15858;
 }
@@ -1417,4 +1428,64 @@ td small {
   .mobile-signout {
     display: grid;
   }
+}
+.projection-banner {
+  margin-top: 18px;
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.projection-banner > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.projection-banner strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.tb-section {
+  margin-bottom: 24px;
+}
+.tb-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.tb-header h2 {
+  margin: 10px 0 6px;
+  font-size: 19px;
+}
+.tb-stats {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.recon-controls {
+  padding: 22px;
+  margin-bottom: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.recon-controls p {
+  margin-top: 6px;
+  font-size: 12px;
+}
+.recon-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.recon-actions .inline-label select {
+  width: 280px;
+}
+.selected-row {
+  background: #f2f8f4;
 }

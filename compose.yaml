@@ -27,6 +27,26 @@ services:
       timeout: 5s
       retries: 20
     restart: unless-stopped
+  tigerbeetle:
+    image: ghcr.io/tigerbeetle/tigerbeetle:0.16.19
+    security_opt:
+      - seccomp=unconfined
+    entrypoint:
+      - sh
+      - -c
+      - |
+        if [ ! -f /data/0_0.tigerbeetle ]; then
+          /tigerbeetle format --cluster=0 --replica=0 --replica-count=1 /data/0_0.tigerbeetle
+        fi
+        exec /tigerbeetle start --addresses=0.0.0.0:3000 /data/0_0.tigerbeetle
+    volumes:
+      - tigerbeetle-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /data/0_0.tigerbeetle"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
   gateway-identity:
     build:
       context: .
@@ -42,10 +62,13 @@ services:
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:?}
       RABBIT_USER: ${RABBIT_USER:?}
       RABBIT_PASSWORD: ${RABBIT_PASSWORD:?}
+      TIGERBEETLE_ADDRESS: tigerbeetle:3000
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      tigerbeetle:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -77,10 +100,13 @@ services:
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:?}
       RABBIT_USER: ${RABBIT_USER:?}
       RABBIT_PASSWORD: ${RABBIT_PASSWORD:?}
+      TIGERBEETLE_ADDRESS: tigerbeetle:3000
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      tigerbeetle:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -110,10 +136,13 @@ services:
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:?}
       RABBIT_USER: ${RABBIT_USER:?}
       RABBIT_PASSWORD: ${RABBIT_PASSWORD:?}
+      TIGERBEETLE_ADDRESS: tigerbeetle:3000
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      tigerbeetle:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -143,10 +172,13 @@ services:
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:?}
       RABBIT_USER: ${RABBIT_USER:?}
       RABBIT_PASSWORD: ${RABBIT_PASSWORD:?}
+      TIGERBEETLE_ADDRESS: tigerbeetle:3000
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      tigerbeetle:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -176,10 +208,13 @@ services:
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:?}
       RABBIT_USER: ${RABBIT_USER:?}
       RABBIT_PASSWORD: ${RABBIT_PASSWORD:?}
+      TIGERBEETLE_ADDRESS: tigerbeetle:3000
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      tigerbeetle:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -209,10 +244,13 @@ services:
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:?}
       RABBIT_USER: ${RABBIT_USER:?}
       RABBIT_PASSWORD: ${RABBIT_PASSWORD:?}
+      TIGERBEETLE_ADDRESS: tigerbeetle:3000
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      tigerbeetle:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -233,6 +271,8 @@ services:
       args:
         SERVICE: ledger-reconciliation
     image: paybuddy/ledger-reconciliation:0.1.0
+    security_opt:
+      - seccomp=unconfined
     environment:
       DATABASE_URL: jdbc:postgresql://postgres:5432/ledger_reconciliation
       DATABASE_USER: ledger_app
@@ -244,10 +284,13 @@ services:
       WEBHOOK_SECRET: ${WEBHOOK_SECRET:?}
       RABBIT_USER: ${RABBIT_USER:?}
       RABBIT_PASSWORD: ${RABBIT_PASSWORD:?}
+      TIGERBEETLE_ADDRESS: tigerbeetle:3000
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      tigerbeetle:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
@@ -278,3 +321,4 @@ services:
 volumes:
   postgres-data:
   rabbit-data:
+  tigerbeetle-data:

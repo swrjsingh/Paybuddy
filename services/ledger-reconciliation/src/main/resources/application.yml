@@ -34,6 +34,7 @@ paybuddy:
   routing-url: http://routing-policy:8080
   provider-url: http://provider-adapter:8080
   callback-url: http://webhook-ingestion:8080
+  tigerbeetle-address: ${TIGERBEETLE_ADDRESS:tigerbeetle:3000}
 
 spring.flyway.user: ${MIGRATION_USER}
 spring.flyway.password: ${MIGRATION_PASSWORD}

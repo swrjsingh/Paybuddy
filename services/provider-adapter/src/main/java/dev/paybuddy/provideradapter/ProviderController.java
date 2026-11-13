@@ -241,6 +241,111 @@ public class ProviderController {
     return Map.of("queued", 3);
   }
 
+  @GetMapping("/operations/providers/settlements")
+  public Map<String, Object> exportSettlements(
+    @RequestParam(defaultValue = "CLEAN") String anomaly,
+    Authentication auth
+  ) {
+    var actor = Actor.of(auth);
+    actor.requireOperations();
+    return buildSettlementReport(actor.merchantId(), anomaly);
+  }
+
+  @GetMapping("/internal/providers/settlements/{merchantId}")
+  public Map<String, Object> internalSettlements(
+    @PathVariable String merchantId,
+    @RequestParam(defaultValue = "CLEAN") String anomaly
+  ) {
+    return buildSettlementReport(merchantId, anomaly);
+  }
+
+  private Map<String, Object> buildSettlementReport(
+    String merchantId,
+    String anomaly
+  ) {
+    var txns = db.rows(
+      "SELECT * FROM provider_transactions WHERE merchant_id=? AND status='SUCCEEDED' ORDER BY created_at DESC LIMIT 200",
+      merchantId
+    );
+    var rows = new ArrayList<Map<String, Object>>();
+    String today = Instant.now().toString().substring(0, 10);
+    for (int i = 0; i < txns.size(); i++) {
+      var t = txns.get(i);
+      if ("MISSING_IN_SETTLEMENT".equals(anomaly) && i == 0) continue;
+      long gross = Json.number(t, "amountMinor");
+      if ("AMOUNT_MISMATCH".equals(anomaly) && i == 0) {
+        gross = Math.max(100, gross - 5000);
+      }
+      long fee = Math.round(gross * 0.02);
+      long net = gross - fee;
+      String status = ("STATUS_CONFLICT".equals(anomaly) && i == 0)
+        ? "FAILED"
+        : "SETTLED";
+      var r = new LinkedHashMap<String, Object>();
+      r.put("merchantId", merchantId);
+      r.put("providerId", t.get("providerId"));
+      r.put("providerTransactionId", t.get("id"));
+      r.put("attemptId", t.get("requestKey"));
+      r.put("intentId", t.get("intentId"));
+      r.put("orderId", t.get("orderId"));
+      r.put("currency", t.get("currency"));
+      r.put("grossAmountMinor", gross);
+      r.put("feeAmountMinor", fee);
+      r.put("netAmountMinor", net);
+      r.put("settlementDate", today);
+      r.put("status", status);
+      rows.add(r);
+      if ("DUPLICATE_SETTLEMENT".equals(anomaly) && i == 0) {
+        rows.add(new LinkedHashMap<>(r));
+      }
+    }
+    if ("MISSING_IN_LEDGER".equals(anomaly)) {
+      String ghostId = Json.id();
+      var r = new LinkedHashMap<String, Object>();
+      r.put("merchantId", merchantId);
+      r.put("providerId", "upi-a");
+      r.put("providerTransactionId", "prov-unrecorded-" + ghostId.substring(0, 8));
+      r.put("attemptId", "intent-unrecorded-" + ghostId.substring(0, 8));
+      r.put("intentId", "intent-unrecorded-" + ghostId.substring(0, 8));
+      r.put("orderId", "order-unrecorded-" + ghostId.substring(0, 8));
+      r.put("currency", "INR");
+      r.put("grossAmountMinor", 75000L);
+      r.put("feeAmountMinor", 1500L);
+      r.put("netAmountMinor", 73500L);
+      r.put("settlementDate", today);
+      r.put("status", "SETTLED");
+      rows.addFirst(r);
+    }
+    String reportId =
+      "SET-" + today.replace("-", "") + "-" + anomaly + "-" + txns.size();
+    var csv = new StringBuilder(
+      "report_id,merchant_id,provider_id,provider_transaction_id,attempt_id,currency,gross_amount_minor,fee_amount_minor,net_amount_minor,settlement_date,status\n"
+    );
+    for (var r : rows) {
+      csv
+        .append(reportId).append(',')
+        .append(r.get("merchantId")).append(',')
+        .append(r.get("providerId")).append(',')
+        .append(r.get("providerTransactionId")).append(',')
+        .append(r.get("attemptId")).append(',')
+        .append(r.get("currency")).append(',')
+        .append(r.get("grossAmountMinor")).append(',')
+        .append(r.get("feeAmountMinor")).append(',')
+        .append(r.get("netAmountMinor")).append(',')
+        .append(r.get("settlementDate")).append(',')
+        .append(r.get("status")).append('\n');
+    }
+    var out = new LinkedHashMap<String, Object>();
+    out.put("reportId", reportId);
+    out.put("merchantId", merchantId);
+    out.put("anomalyMode", anomaly);
+    out.put("generatedAt", Instant.now().toString());
+    out.put("rowCount", rows.size());
+    out.put("rows", rows);
+    out.put("csv", csv.toString());
+    return out;
+  }
+
   @Scheduled(fixedDelay = 1000)
   public void callbacks() {
     try {

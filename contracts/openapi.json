@@ -1168,6 +1168,183 @@
           }
         }
       }
+    },
+    "/ledger/accounts": {
+      "get": {
+        "summary": "Read TigerBeetle double-entry account balances and transfer counts",
+        "tags": [
+          "Ledger"
+        ],
+        "responses": {
+          "200": {
+            "description": "TigerBeetle clearing, receivable, and fee account balances"
+          }
+        }
+      }
+    },
+    "/operations/providers/settlements": {
+      "get": {
+        "summary": "Operations: generate independent provider settlement report CSV/rows",
+        "tags": [
+          "Provider"
+        ],
+        "responses": {
+          "200": {
+            "description": "Provider settlement batch"
+          }
+        }
+      }
+    },
+    "/settlements/import": {
+      "post": {
+        "summary": "Import provider settlement report idempotently and run reconciliation",
+        "tags": [
+          "Reconciliation"
+        ],
+        "responses": {
+          "200": {
+            "description": "Settlement import and reconciliation run summary"
+          },
+          "400": {
+            "description": "Malformed CSV or invalid gross - fee = net math"
+          },
+          "409": {
+            "description": "Report ID reused with different content"
+          }
+        }
+      }
+    },
+    "/reconciliation/runs": {
+      "get": {
+        "summary": "List reconciliation runs",
+        "tags": [
+          "Reconciliation"
+        ],
+        "responses": {
+          "200": {
+            "description": "Reconciliation run list"
+          }
+        }
+      },
+      "post": {
+        "summary": "Re-run reconciliation on an imported settlement report",
+        "tags": [
+          "Reconciliation"
+        ],
+        "responses": {
+          "200": {
+            "description": "Reconciliation run summary"
+          }
+        }
+      }
+    },
+    "/reconciliation/runs/{id}/items": {
+      "get": {
+        "summary": "Inspect row-by-row comparison items for a reconciliation run",
+        "tags": [
+          "Reconciliation"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comparison items"
+          }
+        }
+      }
+    },
+    "/reconciliation/exceptions": {
+      "get": {
+        "summary": "List reconciliation exceptions",
+        "tags": [
+          "Reconciliation"
+        ],
+        "responses": {
+          "200": {
+            "description": "Exceptions list"
+          }
+        }
+      }
+    },
+    "/reconciliation/exceptions/{id}/actions": {
+      "post": {
+        "summary": "Operations: transition exception status (INVESTIGATING / RESOLVED) with audit trail",
+        "tags": [
+          "Reconciliation"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated exception record"
+          }
+        }
+      }
+    },
+    "/reconciliation/exceptions/{id}/audit": {
+      "get": {
+        "summary": "Read immutable audit trail for a reconciliation exception",
+        "tags": [
+          "Reconciliation"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit log entries"
+          }
+        }
+      }
+    },
+    "/reports/summary": {
+      "get": {
+        "summary": "Read asynchronous reporting projection and freshness lag",
+        "tags": [
+          "Reporting"
+        ],
+        "responses": {
+          "200": {
+            "description": "Projected vs authoritative volume and lag"
+          }
+        }
+      }
+    },
+    "/operations/reports/control": {
+      "put": {
+        "summary": "Operations: pause or resume asynchronous reporting projection consumer",
+        "tags": [
+          "Reporting"
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated pause state"
+          }
+        }
+      }
     }
   },
   "components": {

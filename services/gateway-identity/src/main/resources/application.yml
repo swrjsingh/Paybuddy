@@ -58,4 +58,4 @@ spring.cloud.gateway.server.webmvc.routes:
   - id: ledger
     uri: http://ledger-reconciliation:8080
     predicates:
-      - Path=/ledger,/ledger/**
+      - Path=/ledger,/ledger/**,/settlements/**,/reconciliation/**,/reports/**,/operations/reconciliation/**,/operations/reports/**

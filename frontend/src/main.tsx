@@ -76,6 +76,91 @@ type Entry = {
   amountMinor: number;
   entryKind: string;
   createdAt: string;
+  tbStatus?: string;
+  debitAccountId?: number;
+  creditAccountId?: number;
+  tbPostedAt?: string;
+};
+type TbAccount = {
+  accountId: number;
+  name: string;
+  type: string;
+  debitsPostedMinor: number;
+  creditsPostedMinor: number;
+  netBalanceMinor: number;
+};
+type TbOverview = {
+  engine: string;
+  clusterId: number;
+  ledgerId: number;
+  connected: boolean;
+  accounts: TbAccount[];
+  postedTransfers: number;
+  pendingTransfers: number;
+};
+type ReconRun = {
+  id: string;
+  reportId: string;
+  settlementReportId: string;
+  matchedCount: number;
+  pendingCount: number;
+  exceptionCount: number;
+  createdAt: string;
+};
+type ReconItem = {
+  id: string;
+  runId: string;
+  paymentIntentId: string | null;
+  providerId: string;
+  providerTransactionId: string;
+  classification: string;
+  expectedAmountMinor: number;
+  settledGrossMinor: number;
+  settledFeeMinor: number;
+  settledNetMinor: number;
+  currency: string;
+  detail: string;
+};
+type ReconException = {
+  id: string;
+  runId: string;
+  paymentIntentId: string | null;
+  providerId: string;
+  providerTransactionId: string;
+  classification: string;
+  expectedAmountMinor: number;
+  settledAmountMinor: number;
+  currency: string;
+  status: string;
+  detail: string;
+  resolutionAction: string | null;
+  resolutionNote: string | null;
+  resolvedBy: string | null;
+  updatedAt: string;
+  createdAt: string;
+};
+type AuditEntry = {
+  id: string;
+  actor: string;
+  previousStatus: string;
+  nextStatus: string;
+  action: string;
+  note: string;
+  createdAt: string;
+};
+type ReportSummary = {
+  merchantId: string;
+  projectionPaused: boolean;
+  projectedVolumeMinor: number;
+  projectedCount: number;
+  upiVolumeMinor: number;
+  genericVolumeMinor: number;
+  authoritativeVolumeMinor: number;
+  authoritativeCount: number;
+  unprojectedCount: number;
+  lastLagMs: number;
+  lastProjectedAt: string;
+  openExceptions: number;
 };
 type Provider = {
   id: string;
@@ -360,6 +445,18 @@ function App() {
     queryFn: () => api<Provider[]>("/providers"),
     enabled: !!session && !simulatorToken,
   });
+  const tbQ = useQuery({
+    queryKey: ["tb-accounts"],
+    queryFn: () => api<TbOverview>("/ledger/accounts"),
+    enabled: !!session && !simulatorToken,
+    refetchInterval: 2500,
+  });
+  const reportQ = useQuery({
+    queryKey: ["report-summary"],
+    queryFn: () => api<ReportSummary>("/reports/summary"),
+    enabled: !!session && !simulatorToken,
+    refetchInterval: 2500,
+  });
   const orders = ordersQ.data || [],
     intents = intentsQ.data || [],
     ledger = ledgerQ.data || [];
@@ -416,6 +513,7 @@ function App() {
     { id: "orders", label: "Orders", icon: FileText },
     { id: "payments", label: "Payments", icon: CreditCard },
     { id: "ledger", label: "Ledger", icon: Layers3 },
+    { id: "reconciliation", label: "Reconciliation", icon: ShieldCheck },
     { id: "providers", label: "Providers", icon: Zap },
     ...(ops ? [{ id: "webhooks", label: "Webhooks", icon: Webhook }] : []),
   ];
@@ -508,7 +606,10 @@ function App() {
                       orders: "Every purchase and its current payment status.",
                       payments:
                         "Track payment attempts and inspect their complete history.",
-                      ledger: "Append-only records of confirmed payments.",
+                       ledger:
+                        "Append-only PostgreSQL records and TigerBeetle double-entry accounts.",
+                      reconciliation:
+                        "Match provider settlement reports against the authoritative ledger and resolve exceptions.",
                       providers:
                         "See where payments go and manage provider preferences.",
                       webhooks:
@@ -630,6 +731,53 @@ function App() {
                 Overview covers the latest 200 records. Payment, order, and
                 ledger updates may arrive a few seconds apart.
               </p>
+              {reportQ.data && (
+                <section className="panel projection-banner">
+                  <div>
+                    <span className="pill">
+                      <span className="live-dot" /> ASYNCHRONOUS REPORTING PROJECTION
+                    </span>
+                    <strong>
+                      Projected volume: {money(reportQ.data.projectedVolumeMinor)} ({reportQ.data.projectedCount} payments)
+                    </strong>
+                    <small className="subtle">
+                      Authoritative ledger: {money(reportQ.data.authoritativeVolumeMinor)} ({reportQ.data.authoritativeCount}) ·{" "}
+                      {reportQ.data.projectionPaused
+                        ? `Consumer paused (${reportQ.data.unprojectedCount} unprojected)`
+                        : `Freshness lag: ${reportQ.data.lastLagMs} ms`}
+                      {reportQ.data.openExceptions > 0 &&
+                        ` · ${reportQ.data.openExceptions} open reconciliation exception(s)`}
+                    </small>
+                  </div>
+                  {ops && (
+                    <button
+                      className="secondary small"
+                      onClick={async () => {
+                        try {
+                          await send(
+                            "/operations/reports/control",
+                            { paused: !reportQ.data!.projectionPaused },
+                            "PUT",
+                          );
+                          await qc.invalidateQueries({ queryKey: ["report-summary"] });
+                          notify(
+                            !reportQ.data!.projectionPaused
+                              ? "Reporting consumer paused to demonstrate projection lag."
+                              : "Reporting consumer resumed and caught up with authoritative ledger.",
+                          );
+                        } catch (e) {
+                          notify((e as Error).message);
+                        }
+                      }}
+                    >
+                      <RefreshCw size={14} />{" "}
+                      {reportQ.data.projectionPaused
+                        ? "Resume reporting consumer"
+                        : "Pause reporting consumer"}
+                    </button>
+                  )}
+                </section>
+              )}
             </>
           )}
           {page === "orders" && (
@@ -730,57 +878,104 @@ function App() {
             </section>
           )}
           {page === "ledger" && (
-            <section className="panel">
-              <div className="panel-heading">
-                <div>
-                  <h2>Payment ledger</h2>
-                  <p>
-                    Confirmed payment effects are recorded once and cannot be
-                    edited.
-                  </p>
+            <>
+              {tbQ.data && (
+                <div className="tb-section">
+                  <div className="tb-header">
+                    <div>
+                      <span className="pill">
+                        <Zap size={13} /> DOUBLE-ENTRY OLTP LEDGER · {tbQ.data.engine}
+                      </span>
+                      <h2>TigerBeetle double-entry accounts</h2>
+                      <p className="subtle">
+                        Every confirmed payment posts a deterministic transfer from the provider clearing account to the merchant receivable account.
+                      </p>
+                    </div>
+                    <Badge status={tbQ.data.connected ? "AVAILABLE" : "DISABLED"} />
+                  </div>
+                  <div className="stats tb-stats">
+                    {tbQ.data.accounts.map((a) => (
+                      <div className="stat" key={a.accountId}>
+                        <div>
+                          <span>{a.name}</span>
+                          <span className="mono">#{a.accountId}</span>
+                        </div>
+                        <strong>{money(a.netBalanceMinor)}</strong>
+                        <small>
+                          Debits {money(a.debitsPostedMinor)} · Credits{" "}
+                          {money(a.creditsPostedMinor)}
+                        </small>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <span className="pill">
-                  <ShieldCheck size={14} /> Append-only
-                </span>
-              </div>
-              {ledger.length ? (
-                <div className="table-scroll">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Payment</th>
-                        <th>Provider</th>
-                        <th>Entry</th>
-                        <th>Amount</th>
-                        <th>Recorded</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {ledger.map((e) => (
-                        <tr
-                          key={e.id}
-                          onClick={() => setSelected(e.paymentIntentId)}
-                          className="clickable"
-                        >
-                          <td className="mono">{short(e.paymentIntentId)}</td>
-                          <td>{e.providerId}</td>
-                          <td>
-                            <Badge status="SUCCEEDED" />
-                          </td>
-                          <td className="amount">{money(e.amountMinor)}</td>
-                          <td className="subtle">{time(e.createdAt)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <Empty
-                  title="Your ledger starts with a payment"
-                  description="Complete a demo checkout to see its permanent record."
-                />
               )}
-            </section>
+              <section className="panel">
+                <div className="panel-heading">
+                  <div>
+                    <h2>Authoritative payment ledger</h2>
+                    <p>
+                      Confirmed payment effects are recorded once in PostgreSQL and posted idempotently to TigerBeetle.
+                    </p>
+                  </div>
+                  <span className="pill">
+                    <ShieldCheck size={14} /> Append-only + Double-entry
+                  </span>
+                </div>
+                {ledger.length ? (
+                  <div className="table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Payment</th>
+                          <th>Provider</th>
+                          <th>PostgreSQL Audit</th>
+                          <th>TigerBeetle Transfer</th>
+                          <th>Double-Entry Accounts</th>
+                          <th>Amount</th>
+                          <th>Recorded</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ledger.map((e) => (
+                          <tr
+                            key={e.id}
+                            onClick={() => setSelected(e.paymentIntentId)}
+                            className="clickable"
+                          >
+                            <td className="mono">{short(e.paymentIntentId)}</td>
+                            <td>{e.providerId}</td>
+                            <td>
+                              <Badge status="SUCCEEDED" />
+                            </td>
+                            <td>
+                              <Badge status={e.tbStatus || "POSTED"} />
+                            </td>
+                            <td className="mono subtle">
+                              DR #{e.debitAccountId || 1001} → CR #{e.creditAccountId || 2001}
+                            </td>
+                            <td className="amount">{money(e.amountMinor)}</td>
+                            <td className="subtle">{time(e.createdAt)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <Empty
+                    title="Your ledger starts with a payment"
+                    description="Complete a demo checkout to see its permanent record."
+                  />
+                )}
+              </section>
+            </>
+          )}
+          {page === "reconciliation" && (
+            <Reconciliation
+              operations={ops}
+              notify={notify}
+              openPayment={setSelected}
+            />
           )}
           {page === "providers" && (
             <Providers
@@ -1486,6 +1681,487 @@ function Webhooks() {
         />
       )}
     </section>
+  );
+}
+function Reconciliation({
+  operations,
+  notify,
+  openPayment,
+}: {
+  operations: boolean;
+  notify: (s: string) => void;
+  openPayment: (id: string) => void;
+}) {
+  const [anomaly, setAnomaly] = useState("CLEAN");
+  const [busy, setBusy] = useState(false);
+  const [selectedRun, setSelectedRun] = useState<string | null>(null);
+  const [selectedEx, setSelectedEx] = useState<ReconException | null>(null);
+  const [action, setAction] = useState("VERIFIED_WITH_PROVIDER");
+  const [note, setNote] = useState("");
+  const client = useQueryClient();
+
+  const runsQ = useQuery({
+    queryKey: ["recon-runs"],
+    queryFn: () => api<ReconRun[]>("/reconciliation/runs"),
+    refetchInterval: 3000,
+  });
+  const exceptionsQ = useQuery({
+    queryKey: ["recon-exceptions"],
+    queryFn: () => api<ReconException[]>("/reconciliation/exceptions"),
+    refetchInterval: 3000,
+  });
+  const activeRunId = selectedRun || runsQ.data?.[0]?.id || null;
+  const itemsQ = useQuery({
+    queryKey: ["recon-items", activeRunId],
+    queryFn: () => api<ReconItem[]>("/reconciliation/runs/" + activeRunId + "/items"),
+    enabled: !!activeRunId,
+  });
+  const auditQ = useQuery({
+    queryKey: ["recon-audit", selectedEx?.id],
+    queryFn: () =>
+      api<AuditEntry[]>("/reconciliation/exceptions/" + selectedEx!.id + "/audit"),
+    enabled: !!selectedEx,
+  });
+
+  async function importAndRun() {
+    setBusy(true);
+    try {
+      const res = await send<{ reportId: string; duplicateImport: boolean; run?: ReconRun }>(
+        "/settlements/import",
+        { anomaly },
+      );
+      await client.invalidateQueries({ queryKey: ["recon-runs"] });
+      await client.invalidateQueries({ queryKey: ["recon-exceptions"] });
+      await client.invalidateQueries({ queryKey: ["report-summary"] });
+      if (res.run?.id) setSelectedRun(res.run.id);
+      notify(
+        res.duplicateImport
+          ? `Idempotent re-import of ${res.reportId}: existing run returned.`
+          : `Imported ${res.reportId}: ${res.run?.matchedCount || 0} matched, ${res.run?.exceptionCount || 0} exceptions.`,
+      );
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitAction(status: string) {
+    if (!selectedEx) return;
+    if (!note.trim()) {
+      notify("Enter an audit note before updating the exception.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const updated = await send<ReconException>(
+        "/reconciliation/exceptions/" + selectedEx.id + "/actions",
+        { status, action, note },
+      );
+      setSelectedEx(updated);
+      setNote("");
+      await client.invalidateQueries({ queryKey: ["recon-exceptions"] });
+      await client.invalidateQueries({ queryKey: ["recon-audit", selectedEx.id] });
+      await client.invalidateQueries({ queryKey: ["report-summary"] });
+      notify(`Exception marked ${status.toLowerCase()}. Audit trail recorded.`);
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const runs = runsQ.data || [];
+  const exceptions = exceptionsQ.data || [];
+  const openCount = exceptions.filter((e) => e.status !== "RESOLVED").length;
+  const resolvedCount = exceptions.filter((e) => e.status === "RESOLVED").length;
+  const latestRun = runs[0];
+
+  return (
+    <>
+      <div className="stats">
+        <Stat
+          label="Reconciliation runs"
+          value={String(runs.length)}
+          foot={latestRun ? `Latest: ${latestRun.reportId}` : "Import a settlement batch"}
+          icon={<FileText size={20} />}
+        />
+        <Stat
+          label="Matched settlements"
+          value={String(latestRun?.matchedCount || 0)}
+          foot="Exact ID, attempt & gross match"
+          icon={<CheckCircle2 size={20} />}
+        />
+        <Stat
+          label="Open exceptions"
+          value={String(openCount)}
+          foot="Require operations investigation"
+          icon={<XCircle size={20} />}
+        />
+        <Stat
+          label="Audited resolutions"
+          value={String(resolvedCount)}
+          foot="Resolved with operator evidence"
+          icon={<ShieldCheck size={20} />}
+        />
+      </div>
+
+      <section className="panel recon-controls">
+        <div>
+          <h2>Import provider settlement report</h2>
+          <p className="subtle">
+            Generates an independent settlement CSV from Provider Adapter records and reconciles every row against the authoritative ledger.
+          </p>
+        </div>
+        <div className="recon-actions">
+          <label className="inline-label">
+            Settlement batch mode
+            <select
+              aria-label="Settlement batch mode"
+              value={anomaly}
+              onChange={(e) => setAnomaly(e.target.value)}
+            >
+              <option value="CLEAN">Clean settlement report (exact match)</option>
+              <option value="AMOUNT_MISMATCH">Inject amount mismatch (−₹50 on latest)</option>
+              <option value="MISSING_IN_SETTLEMENT">Inject missing settlement row</option>
+              <option value="MISSING_IN_LEDGER">Inject unrecorded provider settlement</option>
+              <option value="DUPLICATE_SETTLEMENT">Inject duplicate settlement row</option>
+              <option value="STATUS_CONFLICT">Inject settlement status conflict</option>
+            </select>
+          </label>
+          <button className="primary" disabled={busy} onClick={importAndRun}>
+            {busy ? (
+              <Loader2 className="spin" size={16} />
+            ) : (
+              <>
+                <RefreshCw size={16} /> Import & reconcile
+              </>
+            )}
+          </button>
+        </div>
+      </section>
+
+      <div className="overview-grid recon-grid">
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Reconciliation exceptions</h2>
+              <p>Discrepancies between provider settlement reports and the merchant ledger</p>
+            </div>
+            <span className="pill">{exceptions.length} total</span>
+          </div>
+          {exceptions.length ? (
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Classification</th>
+                    <th>Payment / Txn</th>
+                    <th>Expected</th>
+                    <th>Settled</th>
+                    <th>Status</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {exceptions.map((ex) => (
+                    <tr
+                      key={ex.id}
+                      className="clickable"
+                      onClick={() => setSelectedEx(ex)}
+                    >
+                      <td>
+                        <Badge status={ex.classification} />
+                        <small>{ex.detail}</small>
+                      </td>
+                      <td>
+                        <strong className="mono">
+                          {ex.paymentIntentId ? short(ex.paymentIntentId) : "UNLINKED"}
+                        </strong>
+                        <small className="mono">{ex.providerId} · {short(ex.providerTransactionId)}</small>
+                      </td>
+                      <td className="amount">{money(ex.expectedAmountMinor)}</td>
+                      <td className="amount">{money(ex.settledAmountMinor)}</td>
+                      <td>
+                        <Badge status={ex.status} />
+                      </td>
+                      <td>
+                        <ChevronRight size={16} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <Empty
+              title="No reconciliation exceptions"
+              description="Import a settlement report or inject an anomaly to test exception detection."
+            />
+          )}
+        </section>
+
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <h2>Settlement batches</h2>
+              <p>Click a batch to inspect its row-by-row matching items</p>
+            </div>
+          </div>
+          {runs.length ? (
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Report ID</th>
+                    <th>Matched</th>
+                    <th>Exceptions</th>
+                    <th>Imported</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {runs.map((r) => (
+                    <tr
+                      key={r.id}
+                      onClick={() => setSelectedRun(r.id)}
+                      className={
+                        "clickable " + (activeRunId === r.id ? "selected-row" : "")
+                      }
+                    >
+                      <td>
+                        <strong className="mono">{r.reportId}</strong>
+                      </td>
+                      <td>{r.matchedCount}</td>
+                      <td>
+                        <Badge
+                          status={r.exceptionCount > 0 ? "FAILED" : "SUCCEEDED"}
+                        />{" "}
+                        {r.exceptionCount}
+                      </td>
+                      <td className="subtle">{time(r.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <Empty
+              title="No batches imported yet"
+              description="Run your first settlement import above."
+            />
+          )}
+        </section>
+      </div>
+
+      {activeRunId && itemsQ.data && itemsQ.data.length > 0 && (
+        <section className="panel" style={{ marginTop: 22 }}>
+          <div className="panel-heading">
+            <div>
+              <h2>Batch comparison items</h2>
+              <p>
+                Authoritative ledger vs. provider settlement rows (Gross − 2% Fee = Net)
+              </p>
+            </div>
+          </div>
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Payment</th>
+                  <th>Provider Txn</th>
+                  <th>Classification</th>
+                  <th>Ledger Amount</th>
+                  <th>Settled Gross</th>
+                  <th>Fee</th>
+                  <th>Settled Net</th>
+                  <th>Explanation</th>
+                </tr>
+              </thead>
+              <tbody>
+                {itemsQ.data.map((it) => (
+                  <tr
+                    key={it.id}
+                    className={it.paymentIntentId ? "clickable" : ""}
+                    onClick={() =>
+                      it.paymentIntentId &&
+                      !it.paymentIntentId.startsWith("intent-unrecorded-") &&
+                      openPayment(it.paymentIntentId)
+                    }
+                  >
+                    <td className="mono">
+                      {it.paymentIntentId ? short(it.paymentIntentId) : "—"}
+                    </td>
+                    <td className="mono">
+                      {it.providerId} · {short(it.providerTransactionId)}
+                    </td>
+                    <td>
+                      <Badge status={it.classification} />
+                    </td>
+                    <td className="amount">{money(it.expectedAmountMinor)}</td>
+                    <td className="amount">{money(it.settledGrossMinor)}</td>
+                    <td className="subtle">{money(it.settledFeeMinor)}</td>
+                    <td className="amount">{money(it.settledNetMinor)}</td>
+                    <td className="subtle">{it.detail}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {selectedEx && (
+        <div
+          className="modal-backdrop detail-backdrop"
+          onClick={() => setSelectedEx(null)}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            className="detail"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-heading">
+              <div>
+                <div className="eyebrow">RECONCILIATION EXCEPTION</div>
+                <h2>{selectedEx.classification.replaceAll("_", " ")}</h2>
+              </div>
+              <button
+                className="icon-button"
+                aria-label="Close exception"
+                onClick={() => setSelectedEx(null)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="detail-summary">
+              <div>
+                <span>Expected vs Settled</span>
+                <strong>
+                  {money(selectedEx.expectedAmountMinor)} /{" "}
+                  {money(selectedEx.settledAmountMinor)}
+                </strong>
+              </div>
+              <Badge status={selectedEx.status} />
+            </div>
+            <p className="form-note">{selectedEx.detail}</p>
+            <div className="detail-facts">
+              <div>
+                <span>Provider</span>
+                <strong>{selectedEx.providerId}</strong>
+              </div>
+              <div>
+                <span>Provider Txn</span>
+                <strong className="mono">
+                  {short(selectedEx.providerTransactionId)}
+                </strong>
+              </div>
+              <div>
+                <span>Payment ID</span>
+                <strong className="mono">
+                  {selectedEx.paymentIntentId
+                    ? short(selectedEx.paymentIntentId)
+                    : "Unlinked"}
+                </strong>
+              </div>
+              <div>
+                <span>Resolved By</span>
+                <strong>{selectedEx.resolvedBy || "Pending"}</strong>
+              </div>
+            </div>
+
+            {operations ? (
+              <div className="checkout" style={{ textAlign: "left" }}>
+                <h3>Audited operator resolution</h3>
+                <p className="subtle" style={{ marginBottom: 14 }}>
+                  Original ledger entries remain immutable. Record investigation findings or authorized resolution evidence.
+                </p>
+                <label style={{ marginBottom: 12 }}>
+                  Resolution action
+                  <select
+                    value={action}
+                    onChange={(e) => setAction(e.target.value)}
+                  >
+                    <option value="VERIFIED_WITH_PROVIDER">
+                      Verified against provider settlement report
+                    </option>
+                    <option value="FEE_OR_ADJUSTMENT_RECORDED">
+                      Authorized fee / settlement adjustment noted
+                    </option>
+                    <option value="DUPLICATE_ROW_SUPPRESSED">
+                      Duplicate provider report row suppressed
+                    </option>
+                    <option value="ESCALATED_TO_PSP">
+                      Escalated discrepancy to provider operations
+                    </option>
+                  </select>
+                </label>
+                <label style={{ marginBottom: 14 }}>
+                  Operator audit note
+                  <input
+                    placeholder="Document evidence and reason for status transition…"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                  />
+                </label>
+                <div className="simulation-actions">
+                  <button
+                    className="secondary"
+                    disabled={busy}
+                    onClick={() => submitAction("INVESTIGATING")}
+                  >
+                    Mark investigating
+                  </button>
+                  <button
+                    className="primary"
+                    disabled={busy}
+                    onClick={() => submitAction("RESOLVED")}
+                  >
+                    <Check size={15} /> Resolve exception
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="info-note" style={{ marginBottom: 20 }}>
+                <ShieldCheck size={18} />
+                <p>
+                  Sign in as Operations (`ops@paybuddy.local`) to investigate and resolve reconciliation exceptions.
+                </p>
+              </div>
+            )}
+
+            <div className="trace-heading">
+              <h3>Exception audit log</h3>
+              <span className="pill">Immutable history</span>
+            </div>
+            <div className="timeline">
+              {auditQ.data?.map((a) => (
+                <div key={a.id} className="timeline-item">
+                  <span
+                    className={
+                      "timeline-marker " +
+                      (a.nextStatus === "RESOLVED" ? "succeeded" : "")
+                    }
+                  >
+                    {a.nextStatus === "RESOLVED" ? <Check size={12} /> : <span />}
+                  </span>
+                  <div>
+                    <strong>
+                      {a.previousStatus.toLowerCase()} →{" "}
+                      {a.nextStatus.toLowerCase()} ({a.action})
+                    </strong>
+                    <p>{a.note}</p>
+                    <small>
+                      {a.actor} · {time(a.createdAt)}
+                    </small>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+    </>
   );
 }
 function Simulator({ token }: { token: string }) {

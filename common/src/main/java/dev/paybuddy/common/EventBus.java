@@ -22,7 +22,8 @@ public class EventBus {
     for (String queue : List.of(
       "payment.outcomes",
       "order.payments",
-      "ledger.payments"
+      "ledger.payments",
+      "reporting.payments"
     )) {
       declarations.add(
         QueueBuilder.durable(queue)

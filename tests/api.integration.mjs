@@ -457,6 +457,138 @@ assert.throws(() =>
   ),
 );
 pass("Restricted ledger runtime role cannot truncate financial history");
+const tbAccounts = await eventually(async () => {
+  const a = await ok("/ledger/accounts", token);
+  return a.connected && a.postedTransfers >= 1 ? a : false;
+}, "TigerBeetle double-entry accounts and transfer posting");
+assert.equal(tbAccounts.engine, "TigerBeetle 0.16.19");
+assert.ok(
+  tbAccounts.accounts.some(
+    (a) => a.type === "MERCHANT_RECEIVABLE" && a.creditsPostedMinor >= 50000,
+  ),
+);
+pass(
+  "TigerBeetle double-entry accounts and deterministic transfer posting verified",
+);
+const cleanImport = await ok("/settlements/import", token, {
+  anomaly: "CLEAN",
+});
+assert.equal(cleanImport.duplicateImport, false);
+assert.equal(cleanImport.run.exceptionCount, 0);
+assert.ok(cleanImport.run.matchedCount >= 1);
+const dupImport = await ok("/settlements/import", token, {
+  anomaly: "CLEAN",
+});
+assert.equal(dupImport.duplicateImport, true);
+assert.equal(dupImport.run.id, cleanImport.run.id);
+pass("Clean settlement import matches ledger and repeat import is idempotent");
+const mismatchImport = await ok("/settlements/import", token, {
+  anomaly: "AMOUNT_MISMATCH",
+});
+assert.equal(mismatchImport.run.exceptionCount, 1);
+const missingImport = await ok("/settlements/import", token, {
+  anomaly: "MISSING_IN_SETTLEMENT",
+});
+assert.equal(missingImport.run.exceptionCount, 1);
+const unrecordedImport = await ok("/settlements/import", token, {
+  anomaly: "MISSING_IN_LEDGER",
+});
+assert.equal(unrecordedImport.run.exceptionCount, 1);
+const duplicateRowImport = await ok("/settlements/import", token, {
+  anomaly: "DUPLICATE_SETTLEMENT",
+});
+assert.equal(duplicateRowImport.run.exceptionCount, 1);
+const statusConflictImport = await ok("/settlements/import", token, {
+  anomaly: "STATUS_CONFLICT",
+});
+assert.equal(statusConflictImport.run.exceptionCount, 1);
+const exceptions = await ok("/reconciliation/exceptions", token);
+const classes = new Set(exceptions.map((e) => e.classification));
+for (const expectedClass of [
+  "AMOUNT_MISMATCH",
+  "MISSING_IN_SETTLEMENT",
+  "MISSING_IN_LEDGER",
+  "DUPLICATE_SETTLEMENT",
+  "STATUS_CONFLICT",
+]) {
+  assert.ok(classes.has(expectedClass), `Missing ${expectedClass}`);
+}
+pass(
+  "Reconciliation detects amount mismatch, missing in settlement/ledger, duplicate settlement, and status conflict",
+);
+const opsClean = await ok("/settlements/import", ops.token, {
+  anomaly: "AMOUNT_MISMATCH",
+});
+const opsExceptions = await ok("/reconciliation/exceptions", ops.token);
+if (opsExceptions.length > 0) {
+  const targetEx = opsExceptions[0];
+  assert.equal(
+    (
+      await request(
+        `/reconciliation/exceptions/${targetEx.id}/actions`,
+        merchant.token,
+        {
+          status: "RESOLVED",
+          action: "VERIFIED_WITH_PROVIDER",
+          note: "Merchant should not resolve",
+        },
+      )
+    ).status,
+    403,
+  );
+  const investigating = await ok(
+    `/reconciliation/exceptions/${targetEx.id}/actions`,
+    ops.token,
+    {
+      status: "INVESTIGATING",
+      action: "VERIFIED_WITH_PROVIDER",
+      note: "Checking PSP settlement statement",
+    },
+  );
+  assert.equal(investigating.status, "INVESTIGATING");
+  const resolved = await ok(
+    `/reconciliation/exceptions/${targetEx.id}/actions`,
+    ops.token,
+    {
+      status: "RESOLVED",
+      action: "FEE_OR_ADJUSTMENT_RECORDED",
+      note: "Verified fee deduction with PSP statement; audit trail recorded",
+    },
+  );
+  assert.equal(resolved.status, "RESOLVED");
+  const audit = await ok(
+    `/reconciliation/exceptions/${targetEx.id}/audit`,
+    ops.token,
+  );
+  assert.ok(audit.length >= 3);
+}
+pass("Audited operator exception resolution workflow and RBAC verified");
+await ok(
+  "/operations/reports/control",
+  ops.token,
+  { paused: true },
+  "PUT",
+);
+try {
+  const pausedSummary = await ok("/reports/summary", token);
+  assert.equal(pausedSummary.projectionPaused, true);
+} finally {
+  await ok(
+    "/operations/reports/control",
+    ops.token,
+    { paused: false },
+    "PUT",
+  );
+}
+const activeSummary = await ok("/reports/summary", token);
+assert.equal(activeSummary.projectionPaused, false);
+assert.equal(
+  activeSummary.projectedVolumeMinor,
+  activeSummary.authoritativeVolumeMinor,
+);
+pass(
+  "Asynchronous reporting projection tracks authoritative ledger and supports lag control",
+);
 mkdirSync("tests/artifacts", { recursive: true });
 writeFileSync(
   "tests/artifacts/api-results.json",
